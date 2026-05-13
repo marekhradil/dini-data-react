@@ -1,0 +1,1 @@
+export const DEFAULT_MAX_RECEIVED_DATA_COUNT = 1000;
