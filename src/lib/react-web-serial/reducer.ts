@@ -15,9 +15,7 @@ type SerialReducerAction =
   | {
       type: "RECEIVE_DATA";
       entry: SerialReceivedDataEntry;
-      //maxReceivedDataCount: number;
-    }
-  | { type: "CLEAR_RECEIVED_DATA" };
+    };
 
 export const initialState: SerialReducerState = {
   port: null,
@@ -25,7 +23,8 @@ export const initialState: SerialReducerState = {
   isConnected: false,
   isUserCancelled: false,
   //isSubscribing: false,
-  receivedData: [],
+  buffer: null,
+  value: null,
   error: null,
 };
 
@@ -100,11 +99,10 @@ export const serialReducer = (
       //   receivedData.length + 1 > max ? receivedData.length + 1 - max : 0;
       return {
         ...state,
-        receivedData: [action.entry],
+        buffer: action.entry.value,
       };
     }
-    case "CLEAR_RECEIVED_DATA":
-      return { ...state, receivedData: [] };
+
     default: {
       const _exhaustive: never = action;
       throw new Error(

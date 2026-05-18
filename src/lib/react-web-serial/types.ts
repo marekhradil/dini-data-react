@@ -8,7 +8,9 @@ export interface SerialReducerState {
   isConnected: boolean;
   isUserCancelled: boolean;
   //isSubscribing: boolean;
-  receivedData: SerialReceivedDataEntry[];
+  //receivedData: SerialReceivedDataEntry[];
+  buffer: string | null;
+  value: number | null;
   error: Error | null;
 }
 
@@ -19,16 +21,15 @@ export interface SerialPortState {
   isConnected: boolean;
   isUserCancelled: boolean;
   //isSubscribing: boolean;
-  receivedData: SerialReceivedDataEntry[];
+  //receivedData: SerialReceivedDataEntry[];
+  buffer: string | null;
+  value: number | null;
   error: Error | null;
 }
 
 export interface SerialPortActions {
   disconnect: () => Promise<void>;
   write: (data: string) => Promise<boolean>;
-  // startSubscribe: () => void;
-  // stopSubscribe: () => Promise<void>;
-  clearReceivedData: () => void;
 }
 
 export interface UseSerialPortParams {

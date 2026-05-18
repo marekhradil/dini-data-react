@@ -286,26 +286,22 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
     [state.port],
   );
 
-  const clearReceivedData = useCallback(() => {
-    dispatch({ type: "CLEAR_RECEIVED_DATA" });
-  }, []);
+  // const stopSubscribe = useCallback(async () => {
+  //   if (!subscribeAbortControllerRef.current) return;
 
-  const stopSubscribe = useCallback(async () => {
-    if (!subscribeAbortControllerRef.current) return;
+  //   subscribeAbortControllerRef.current.abort();
 
-    subscribeAbortControllerRef.current.abort();
-
-    if (readerRef.current) {
-      try {
-        await readerRef.current.cancel();
-      } catch {
-        // ignore cancel errors
-      }
-    }
-    if (readLoopDoneRef.current) {
-      await readLoopDoneRef.current;
-    }
-  }, []);
+  //   if (readerRef.current) {
+  //     try {
+  //       await readerRef.current.cancel();
+  //     } catch {
+  //       // ignore cancel errors
+  //     }
+  //   }
+  //   if (readLoopDoneRef.current) {
+  //     await readLoopDoneRef.current;
+  //   }
+  // }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -315,14 +311,12 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       isConnected: state.isConnected,
       isUserCancelled: state.isUserCancelled,
       //isSubscribing: state.isSubscribing,
-      receivedData: state.receivedData,
+      buffer: state.buffer,
+      value: state.value,
       error: state.error,
       connect,
       disconnect,
       write,
-      startSubscribe,
-      stopSubscribe,
-      clearReceivedData,
     }),
     [
       isAvailableSerialApi,
@@ -331,14 +325,12 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       state.isConnected,
       state.isUserCancelled,
       state.error,
-      //state.isSubscribing,
-      state.receivedData,
+      //state.isSubscribing: state.isSubscribing,
+      state.buffer,
+      state.value,
       connect,
       disconnect,
       write,
-      startSubscribe,
-      stopSubscribe,
-      clearReceivedData,
     ],
   );
 

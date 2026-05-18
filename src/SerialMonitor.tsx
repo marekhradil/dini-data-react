@@ -12,7 +12,7 @@ export function SerialMonitor() {
     connect,
     disconnect,
     write,
-    receivedData,
+    buffer,
   } = useSerialPort({
     options: { baudRate: 9600 },
   });
@@ -66,7 +66,7 @@ export function SerialMonitor() {
         <input
           type="text"
           readOnly
-          value={receivedData.length > 0 ? receivedData[0].value : "-"}
+          value={buffer ?? "-"}
           placeholder="(žádná data)"
           className="read-only"
         />
