@@ -22,7 +22,7 @@ export const initialState: SerialReducerState = {
   isConnecting: false,
   isConnected: false,
   isUserCancelled: false,
-  //isSubscribing: false,
+  isSubscribing: false,
   buffer: null,
   value: null,
   error: null,
@@ -65,7 +65,7 @@ export const serialReducer = (
         isConnecting: false,
         isConnected: false,
         isUserCancelled: false,
-        //isSubscribing: false,
+        isSubscribing: false,
         error: null,
       };
     case "DISCONNECT_SUCCESS":
@@ -73,7 +73,7 @@ export const serialReducer = (
         ...state,
         port: null,
         isConnected: false,
-        //isSubscribing: false,
+        isSubscribing: false,
         error: null,
       };
     case "DISCONNECT_ERROR":
@@ -81,17 +81,17 @@ export const serialReducer = (
         ...state,
         port: null,
         isConnected: false,
-        //isSubscribing: false,
+        isSubscribing: false,
         error: action.error,
       };
     case "WRITE_ERROR":
       return { ...state, error: action.error };
     case "SUBSCRIBE_START":
-      return { ...state, error: null };
+      return { ...state, isSubscribing: true, error: null };
     case "SUBSCRIBE_FINISH":
-      return { ...state };
+      return { ...state, isSubscribing: false };
     case "SUBSCRIBE_ERROR":
-      return { ...state, error: action.error };
+      return { ...state, isSubscribing: false, error: action.error };
     case "RECEIVE_DATA": {
       //const { receivedData } = state;
       //const max = action.maxReceivedDataCount;

@@ -7,8 +7,7 @@ export interface SerialReducerState {
   isConnecting: boolean;
   isConnected: boolean;
   isUserCancelled: boolean;
-  //isSubscribing: boolean;
-  //receivedData: SerialReceivedDataEntry[];
+  isSubscribing: boolean;
   buffer: string | null;
   value: number | null;
   error: Error | null;
@@ -20,8 +19,7 @@ export interface SerialPortState {
   isConnecting: boolean;
   isConnected: boolean;
   isUserCancelled: boolean;
-  //isSubscribing: boolean;
-  //receivedData: SerialReceivedDataEntry[];
+  isSubscribing: boolean;
   buffer: string | null;
   value: number | null;
   error: Error | null;
