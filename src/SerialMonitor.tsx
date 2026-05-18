@@ -17,11 +17,6 @@ export function SerialMonitor() {
     options: { baudRate: 9600 },
   });
 
-  // useEffect(() => {
-  //   if (isConnected && !isSubscribing)
-  //     startSubscribe({ maxReceivedDataCount: 100 });
-  // }, [isConnected, isSubscribing, startSubscribe]);
-
   if (!isAvailableSerialApi) {
     return (
       <p className="error">
@@ -30,14 +25,6 @@ export function SerialMonitor() {
       </p>
     );
   }
-
-  const handleConnect = async () => {
-    await connect();
-  };
-
-  const handleDisconnect = async () => {
-    await disconnect();
-  };
 
   const handleSend = async () => {
     if (!sendValue) return;
@@ -49,10 +36,13 @@ export function SerialMonitor() {
       <h1>Dini Data – Serial Monitor</h1>
 
       <div className="row">
-        <button onClick={handleConnect} disabled={isConnected || isConnecting}>
+        <button
+          onClick={() => connect()}
+          disabled={isConnected || isConnecting}
+        >
           {isConnecting ? "Připojování…" : "Připojit"}
         </button>
-        <button onClick={handleDisconnect} disabled={!isConnected}>
+        <button onClick={() => disconnect()} disabled={!isConnected}>
           Odpojit
         </button>
       </div>
@@ -76,7 +66,7 @@ export function SerialMonitor() {
         <input
           type="text"
           readOnly
-          value={receivedData.length > 0 ? receivedData[0].value : ""}
+          value={receivedData.length > 0 ? receivedData[0].value : "-"}
           placeholder="(žádná data)"
           className="read-only"
         />
