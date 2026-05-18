@@ -1,32 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSerialPort } from "./lib/react-web-serial";
 
-export interface SerialMonitorProps {
-  lastRead: string;
-}
-
-export function SerialMonitor({ lastRead }: SerialMonitorProps) {
+export function SerialMonitor() {
   const [sendValue, setSendValue] = useState("");
 
   const {
     isAvailableSerialApi,
     isConnected,
     isConnecting,
-    isSubscribing,
     error,
     connect,
     disconnect,
     write,
-    startSubscribe,
-    stopSubscribe,
+    receivedData,
   } = useSerialPort({
     options: { baudRate: 9600 },
   });
 
-  useEffect(() => {
-    if (isConnected && !isSubscribing)
-      startSubscribe({ maxReceivedDataCount: 100 });
-  }, [isConnected, isSubscribing, startSubscribe]);
+  // useEffect(() => {
+  //   if (isConnected && !isSubscribing)
+  //     startSubscribe({ maxReceivedDataCount: 100 });
+  // }, [isConnected, isSubscribing, startSubscribe]);
 
   if (!isAvailableSerialApi) {
     return (
@@ -42,7 +36,6 @@ export function SerialMonitor({ lastRead }: SerialMonitorProps) {
   };
 
   const handleDisconnect = async () => {
-    await stopSubscribe();
     await disconnect();
   };
 
@@ -83,13 +76,13 @@ export function SerialMonitor({ lastRead }: SerialMonitorProps) {
         <input
           type="text"
           readOnly
-          value={lastRead}
+          value={receivedData.length > 0 ? receivedData[0].value : ""}
           placeholder="(žádná data)"
           className="read-only"
         />
       </div>
 
-      {isSubscribing && <p className="status">● Čtení aktivní</p>}
+      {isConnected && <p className="status">● Čtení aktivní</p>}
       {error && <p className="error">Chyba: {error.message}</p>}
     </div>
   );
