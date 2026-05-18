@@ -93,13 +93,12 @@ export const serialReducer = (
     case "SUBSCRIBE_ERROR":
       return { ...state, isSubscribing: false, error: action.error };
     case "RECEIVE_DATA": {
-      //const { receivedData } = state;
-      //const max = action.maxReceivedDataCount;
-      // const start =
-      //   receivedData.length + 1 > max ? receivedData.length + 1 - max : 0;
+      const newBuffer = state.buffer?.endsWith("\r\n")
+        ? action.entry.value
+        : (state.buffer ?? "") + action.entry.value;
       return {
         ...state,
-        buffer: action.entry.value,
+        buffer: newBuffer,
       };
     }
 

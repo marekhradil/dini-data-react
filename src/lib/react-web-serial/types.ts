@@ -27,7 +27,7 @@ export interface SerialPortState {
 
 export interface SerialPortActions {
   disconnect: () => Promise<void>;
-  write: (data: string) => Promise<boolean>;
+  write: () => Promise<boolean>;
 }
 
 export interface UseSerialPortParams {

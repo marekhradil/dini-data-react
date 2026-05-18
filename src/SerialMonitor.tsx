@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { useSerialPort } from "./lib/react-web-serial";
 
 export function SerialMonitor() {
-  const [sendValue, setSendValue] = useState("");
-
   const {
     isAvailableSerialApi,
     isConnected,
@@ -26,11 +23,6 @@ export function SerialMonitor() {
     );
   }
 
-  const handleSend = async () => {
-    if (!sendValue) return;
-    await write(sendValue);
-  };
-
   return (
     <div className="monitor">
       <h1>Dini Data – Serial Monitor</h1>
@@ -48,15 +40,15 @@ export function SerialMonitor() {
       </div>
 
       <div className="row">
-        <input
+        {/* <input
           type="text"
           placeholder="Data k odeslání…"
           value={sendValue}
           onChange={(e) => setSendValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          onKeyDown={(e) => e.key === "Enter" && write()}
           disabled={!isConnected}
-        />
-        <button onClick={handleSend} disabled={!isConnected || !sendValue}>
+        /> */}
+        <button onClick={() => write()} disabled={!isConnected}>
           Odeslat
         </button>
       </div>

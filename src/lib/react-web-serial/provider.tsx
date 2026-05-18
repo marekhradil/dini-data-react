@@ -43,110 +43,55 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       state.port?.close().catch(() => {});
       readLoopDoneRef.current = null;
       writeQueueRef.current = Promise.resolve(true);
-      console.log("state.port changed");
     };
   }, [state.port]);
 
-  const startSubscribe = useCallback((port: SerialPort): void => {
-    if (!port || !port.readable) {
-      dispatch({
-        type: "SUBSCRIBE_ERROR",
-        error: new Error("Port is not connected or not readable"),
-      });
-
-      return;
-    }
-
-    // if (connectingAbortControllerRef.current) {
-    //   dispatch({
-    //     type: "SUBSCRIBE_ERROR",
-    //     error: new Error("Cannot subscribe while connecting"),
-    //   });
-    //   return;
-    // }
-
-    // if (subscribeAbortControllerRef.current) {
-    //   dispatch({
-    //     type: "SUBSCRIBE_ERROR",
-    //     error: new Error("Already subscribing"),
-    //   });
-    //   return;
-    // }
-
-    const subscribeAbortController = new AbortController();
-    subscribeAbortControllerRef.current = subscribeAbortController;
-    const signal = subscribeAbortController.signal;
-
-    let reader: ReadableStreamDefaultReader<Uint8Array>;
+  const readingLoop = async (
+    signal: AbortSignal,
+    reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>,
+  ) => {
     try {
-      reader = port.readable.getReader();
-    } catch (err) {
-      subscribeAbortControllerRef.current = null;
-      const error =
-        err instanceof Error ? err : new Error("Failed to start subscribe");
-      dispatch({ type: "SUBSCRIBE_ERROR", error });
-      return;
-    }
+      while (!signal.aborted) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-    readerRef.current = reader;
-    dispatch({ type: "SUBSCRIBE_START" });
-    console.log("Started subscribe to serial port");
-
-    readLoopDoneRef.current = (async () => {
-      try {
-        while (!signal.aborted) {
-          console.log("Waiting for data...");
-          const { value, done } = await reader.read();
-          if (done) {
-            console.log("Stream closed by the device");
-            break;
-          }
-
-          if (value !== undefined) {
-            const entry: SerialReceivedDataEntry = {
-              timestamp: new Date(),
-              value: decoder.decode(value, { stream: true }),
-            };
-
-            console.log("Received data:", entry.value);
-
-            dispatch({
-              type: "RECEIVE_DATA",
-              entry,
-            });
-
-            // Fire onDataRead callback
-            // onDataReadRef.current?.(entry);
-          }
-        }
-      } catch (err) {
-        if (!signal.aborted) {
-          const error =
-            err instanceof Error ? err : new Error("Failed to read data");
-          dispatch({ type: "SUBSCRIBE_ERROR", error });
-        }
-      } finally {
-        const remaining = decoder.decode();
-        if (remaining) {
+        if (value !== undefined) {
           const entry: SerialReceivedDataEntry = {
             timestamp: new Date(),
-            value: remaining,
+            value: decoder.decode(value, { stream: true }),
           };
+
           dispatch({
             type: "RECEIVE_DATA",
             entry,
           });
-          // onDataReadRef.current?.(entry);
         }
-        reader.releaseLock();
-        subscribeAbortControllerRef.current = null;
-        readerRef.current = null;
-        readLoopDoneRef.current = null;
-        dispatch({ type: "SUBSCRIBE_FINISH" });
-        console.log("Finished subscribe to serial port");
       }
-    })();
-  }, []);
+    } catch (err) {
+      if (!signal.aborted) {
+        const error =
+          err instanceof Error ? err : new Error("Failed to read data");
+        dispatch({ type: "SUBSCRIBE_ERROR", error });
+      }
+    } finally {
+      const remaining = decoder.decode();
+      if (remaining) {
+        const entry: SerialReceivedDataEntry = {
+          timestamp: new Date(),
+          value: remaining,
+        };
+        dispatch({
+          type: "RECEIVE_DATA",
+          entry,
+        });
+      }
+      reader.releaseLock();
+      subscribeAbortControllerRef.current = null;
+      readerRef.current = null;
+      readLoopDoneRef.current = null;
+      dispatch({ type: "SUBSCRIBE_FINISH" });
+    }
+  };
 
   const connect = useCallback(
     async (params?: UseSerialPortParams) => {
@@ -184,7 +129,34 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         dispatch({ type: "CONNECT_SUCCESS", port: requestedPort });
         connectingAbortControllerRef.current = null;
 
-        startSubscribe(requestedPort);
+        if (!requestedPort || !requestedPort.readable) {
+          dispatch({
+            type: "SUBSCRIBE_ERROR",
+            error: new Error("Port is not connected or not readable"),
+          });
+
+          return;
+        }
+
+        const subscribeAbortController = new AbortController();
+        subscribeAbortControllerRef.current = subscribeAbortController;
+        const signal = subscribeAbortController.signal;
+
+        let reader: ReadableStreamDefaultReader<Uint8Array>;
+        try {
+          reader = requestedPort.readable.getReader();
+        } catch (err) {
+          subscribeAbortControllerRef.current = null;
+          const error =
+            err instanceof Error ? err : new Error("Failed to start subscribe");
+          dispatch({ type: "SUBSCRIBE_ERROR", error });
+          return;
+        }
+
+        readerRef.current = reader;
+        dispatch({ type: "SUBSCRIBE_START" });
+
+        readLoopDoneRef.current = (async () => readingLoop(signal, reader))();
       } catch (err) {
         if (abortController.signal.aborted) return;
 
@@ -202,7 +174,7 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         connectingAbortControllerRef.current = null;
       }
     },
-    [startSubscribe, state.port],
+    [state.port],
   );
 
   const disconnect = useCallback(async () => {
@@ -244,64 +216,44 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
     }
   }, [state.port]);
 
-  const write = useCallback(
-    (data: string): Promise<boolean> => {
+  const write = useCallback((): Promise<boolean> => {
+    if (!state.port || !state.port.writable) {
+      dispatch({
+        type: "WRITE_ERROR",
+        error: new Error("Port is not writable"),
+      });
+      return Promise.resolve(false);
+    }
+
+    const result = writeQueueRef.current.then(async () => {
       if (!state.port || !state.port.writable) {
         dispatch({
           type: "WRITE_ERROR",
           error: new Error("Port is not writable"),
         });
-        return Promise.resolve(false);
+        return false;
       }
 
-      const result = writeQueueRef.current.then(async () => {
-        if (!state.port || !state.port.writable) {
-          dispatch({
-            type: "WRITE_ERROR",
-            error: new Error("Port is not writable"),
-          });
-          return false;
-        }
+      const writer = state.port.writable.getWriter();
+      try {
+        await writer.write(textEncoder.encode("READ\r\n"));
+        return true;
+      } catch (err) {
+        const error =
+          err instanceof Error ? err : new Error("Failed to write data");
+        dispatch({ type: "WRITE_ERROR", error });
+        return false;
+      } finally {
+        writer.releaseLock();
+      }
+    });
 
-        const writer = state.port.writable.getWriter();
-        try {
-          await writer.write(textEncoder.encode(data + "\r\n"));
-          return true;
-        } catch (err) {
-          const error =
-            err instanceof Error ? err : new Error("Failed to write data");
-          dispatch({ type: "WRITE_ERROR", error });
-          return false;
-        } finally {
-          writer.releaseLock();
-        }
-      });
-
-      writeQueueRef.current = result.then(
-        () => true,
-        () => true,
-      );
-      return result;
-    },
-    [state.port],
-  );
-
-  // const stopSubscribe = useCallback(async () => {
-  //   if (!subscribeAbortControllerRef.current) return;
-
-  //   subscribeAbortControllerRef.current.abort();
-
-  //   if (readerRef.current) {
-  //     try {
-  //       await readerRef.current.cancel();
-  //     } catch {
-  //       // ignore cancel errors
-  //     }
-  //   }
-  //   if (readLoopDoneRef.current) {
-  //     await readLoopDoneRef.current;
-  //   }
-  // }, []);
+    writeQueueRef.current = result.then(
+      () => true,
+      () => true,
+    );
+    return result;
+  }, [state.port]);
 
   const contextValue = useMemo(
     () => ({
