@@ -36,7 +36,7 @@ export interface UseSerialPortParams {
 }
 
 export interface UseSerialPortReturn
-  extends SerialReducerState, SerialPortActions {
+  extends SerialPortState, SerialPortActions {
   connect: () => Promise<void>;
 }
 
