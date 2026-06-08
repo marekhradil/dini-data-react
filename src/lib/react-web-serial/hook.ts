@@ -16,14 +16,13 @@ export const useSerialPort = ({
     port,
     isConnecting,
     isConnected,
-    isUserCancelled,
     isSubscribing,
     buffer,
     value,
     error,
     connect: contextConnect,
     disconnect,
-    //write,
+    scaleResponse,
   } = context;
 
   const connect = () =>
@@ -32,20 +31,17 @@ export const useSerialPort = ({
       requestOptions,
     });
 
-  //const startSubscribe = () => contextStartSubscribe({ maxReceivedDataCount });
-
   return {
     isAvailableSerialApi,
     port,
     isConnecting,
     isConnected,
-    isUserCancelled,
     isSubscribing,
     buffer,
     value,
     error,
     connect,
     disconnect,
-    //write,
+    scaleResponse,
   };
 };

@@ -8,8 +8,8 @@ export function SerialMonitor() {
     error,
     connect,
     disconnect,
-    //write,
     value,
+    scaleResponse,
   } = useSerialPort({
     options: { baudRate: 9600 },
   });
@@ -40,21 +40,6 @@ export function SerialMonitor() {
       </div>
 
       <div className="row">
-        {/* <input
-          type="text"
-          placeholder="Data k odeslání…"
-          value={sendValue}
-          onChange={(e) => setSendValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && write()}
-          disabled={!isConnected}
-        /> */}
-        {/* <button onClick={() => write()} disabled={!isConnected}>
-          Odeslat
-        </button> */}
-      </div>
-
-      <div className="row">
-        <label>Poslední přijatý řetězec:</label>
         <input
           type="text"
           readOnly
@@ -66,6 +51,42 @@ export function SerialMonitor() {
 
       {isConnected && <p className="status">● Čtení aktivní</p>}
       {error && <p className="error">Chyba: {error.message}</p>}
+      <div className="row">
+        <label>Status:</label>
+        <input
+          type="text"
+          readOnly
+          value={scaleResponse ? scaleResponse.status : "-"}
+          className="read-only"
+        />
+      </div>
+      <div className="row">
+        <label>Tare:</label>
+        <input
+          type="text"
+          readOnly
+          value={scaleResponse ? scaleResponse.tare : "-"}
+          className="read-only"
+        />
+      </div>
+      <div className="row">
+        <label>Weight:</label>
+        <input
+          type="text"
+          readOnly
+          value={scaleResponse ? scaleResponse.weight : "-"}
+          className="read-only"
+        />
+      </div>
+      <div className="row">
+        <label>Unit:</label>
+        <input
+          type="text"
+          readOnly
+          value={scaleResponse ? scaleResponse.unit : "-"}
+          className="read-only"
+        />
+      </div>
     </div>
   );
 }

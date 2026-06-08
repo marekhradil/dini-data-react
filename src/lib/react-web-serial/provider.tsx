@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { SerialContext } from "./context";
-import { initialState, serialReducer } from "./reducer";
-import type {
-  SerialPortInfo,
-  SerialReceivedDataEntry,
-  UseSerialPortParams,
-} from "./types";
+import { initialState, serialReducer } from "./serialReducer";
+import type { SerialReceivedDataEntry, UseSerialPortParams } from "./types";
 
 export interface SerialProviderProps {
   children: React.ReactNode;
@@ -46,7 +42,6 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       state.port?.close().catch(() => {});
       readLoopDoneRef.current = null;
       writeLoopDoneRef.current = null;
-      //writeQueueRef.current = Promise.resolve(true);
     };
   }, [state.port]);
 
@@ -56,7 +51,7 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
   ) => {
     try {
       while (!signal.aborted) {
-        await writer.write(textEncoder.encode("READ\r\n"));
+        await writer.write(textEncoder.encode("REXT\r\n"));
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
     } catch (err) {
@@ -194,13 +189,6 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       } catch (err) {
         if (connectAbortController.signal.aborted) return;
 
-        const isUserCancelled =
-          err instanceof DOMException && err.name === "NotFoundError";
-        if (isUserCancelled) {
-          dispatch({ type: "CONNECT_CANCEL" });
-          return;
-        }
-
         const error =
           err instanceof Error ? err : new Error("Failed to connect");
         dispatch({ type: "CONNECT_ERROR", error });
@@ -262,73 +250,32 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
     }
   }, [state.port]);
 
-  // const write = useCallback((): Promise<boolean> => {
-  //   if (!state.port || !state.port.writable) {
-  //     dispatch({
-  //       type: "WRITE_ERROR",
-  //       error: new Error("Port is not writable"),
-  //     });
-  //     return Promise.resolve(false);
-  //   }
-
-  //   const result = writeQueueRef.current.then(async () => {
-  //     if (!state.port || !state.port.writable) {
-  //       dispatch({
-  //         type: "WRITE_ERROR",
-  //         error: new Error("Port is not writable"),
-  //       });
-  //       return false;
-  //     }
-
-  //     const writer = state.port.writable.getWriter();
-  //     try {
-  //       await writer.write(textEncoder.encode("READ\r\n"));
-  //       return true;
-  //     } catch (err) {
-  //       const error =
-  //         err instanceof Error ? err : new Error("Failed to write data");
-  //       dispatch({ type: "WRITE_ERROR", error });
-  //       return false;
-  //     } finally {
-  //       writer.releaseLock();
-  //     }
-  //   });
-
-  //   writeQueueRef.current = result.then(
-  //     () => true,
-  //     () => true,
-  //   );
-  //   return result;
-  // }, [state.port]);
-
   const contextValue = useMemo(
     () => ({
       isAvailableSerialApi,
-      port: state.port as SerialPortInfo | null,
+      port: state.port || null,
       isConnecting: state.isConnecting,
       isConnected: state.isConnected,
-      isUserCancelled: state.isUserCancelled,
       isSubscribing: state.isSubscribing,
       value: state.value,
       buffer: state.buffer,
       error: state.error,
       connect,
       disconnect,
-      // write,
+      scaleResponse: state.scaleResponse,
     }),
     [
       isAvailableSerialApi,
       state.port,
       state.isConnecting,
       state.isConnected,
-      state.isUserCancelled,
       state.error,
       state.isSubscribing,
       state.value,
       state.buffer,
       connect,
       disconnect,
-      // write,
+      state.scaleResponse,
     ],
   );
 

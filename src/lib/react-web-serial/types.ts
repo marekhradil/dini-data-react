@@ -1,33 +1,15 @@
 export type SerialReceivedDataEntry = { timestamp: Date; value: string };
 
-export type SerialPortInfo = Pick<SerialPort, "getInfo" | "forget">;
-
 export interface SerialReducerState {
   port: SerialPort | null;
-  isConnecting: boolean;
-  isConnected: boolean;
-  isUserCancelled: boolean;
-  isSubscribing: boolean;
-  value: string | null;
-  buffer: string | null;
-  error: Error | null;
-}
-
-export interface SerialPortState {
-  port: SerialPortInfo | null;
   isAvailableSerialApi: boolean;
   isConnecting: boolean;
   isConnected: boolean;
-  isUserCancelled: boolean;
   isSubscribing: boolean;
   value: string | null;
-  buffer: string | null;
+  buffer: string;
   error: Error | null;
-}
-
-export interface SerialPortActions {
-  disconnect: () => Promise<void>;
-  //write: () => Promise<boolean>;
+  scaleResponse: ScaleRextResponse | null;
 }
 
 export interface UseSerialPortParams {
@@ -35,11 +17,21 @@ export interface UseSerialPortParams {
   requestOptions?: SerialPortRequestOptions;
 }
 
-export interface UseSerialPortReturn
-  extends SerialPortState, SerialPortActions {
+export interface UseSerialPortReturn extends SerialReducerState {
   connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
 }
 
-export interface SerialContextValue extends SerialPortState, SerialPortActions {
+export interface SerialContextValue extends SerialReducerState {
   connect: (params?: UseSerialPortParams) => Promise<void>;
+  disconnect: () => Promise<void>;
+}
+
+export interface ScaleRextResponse {
+  scale: number;
+  status: string;
+  weight: number;
+  tare: number;
+  extra: number;
+  unit: string;
 }

@@ -1,3 +1,4 @@
+import ScaleResponseParser from "./scaleResponseParser";
 import type { SerialReceivedDataEntry, SerialReducerState } from "./types";
 
 type SerialReducerAction =
@@ -19,13 +20,14 @@ type SerialReducerAction =
 
 export const initialState: SerialReducerState = {
   port: null,
+  isAvailableSerialApi: "serial" in navigator,
   isConnecting: false,
   isConnected: false,
-  isUserCancelled: false,
   isSubscribing: false,
   value: null,
-  buffer: null,
+  buffer: "",
   error: null,
+  scaleResponse: null,
 };
 
 export const serialReducer = (
@@ -37,7 +39,6 @@ export const serialReducer = (
       return {
         ...state,
         isConnecting: true,
-        isUserCancelled: false,
         error: null,
       };
     case "CONNECT_SUCCESS":
@@ -46,16 +47,14 @@ export const serialReducer = (
         port: action.port,
         isConnecting: false,
         isConnected: true,
-        isUserCancelled: false,
         error: null,
       };
     case "CONNECT_CANCEL":
       return {
         ...state,
         isConnecting: false,
-        isUserCancelled: true,
         error: null,
-        buffer: null,
+        buffer: "",
         value: null,
       };
     case "CONNECT_ERROR":
@@ -66,11 +65,11 @@ export const serialReducer = (
         port: null,
         isConnecting: false,
         isConnected: false,
-        isUserCancelled: false,
         isSubscribing: false,
         error: null,
-        buffer: null,
+        buffer: "",
         value: null,
+        scaleResponse: null,
       };
     case "DISCONNECT_SUCCESS":
       return {
@@ -79,8 +78,9 @@ export const serialReducer = (
         isConnected: false,
         isSubscribing: false,
         error: null,
-        buffer: null,
+        buffer: "",
         value: null,
+        scaleResponse: null,
       };
     case "DISCONNECT_ERROR":
       return {
@@ -89,8 +89,9 @@ export const serialReducer = (
         isConnected: false,
         isSubscribing: false,
         error: action.error,
-        buffer: null,
+        buffer: "",
         value: null,
+        scaleResponse: null,
       };
     case "WRITE_ERROR":
       return { ...state, error: action.error };
@@ -101,22 +102,29 @@ export const serialReducer = (
         ...state,
         isSubscribing: false,
         value: null,
-        buffer: null,
+        buffer: "",
+        scaleResponse: null,
         error: null,
       };
     case "SUBSCRIBE_ERROR":
       return { ...state, isSubscribing: false, error: action.error };
     case "RECEIVE_DATA": {
-      if (action.entry.value.endsWith("\r\n")) {
+      const res = state.buffer + action.entry.value;
+      const idx = res.indexOf("\r\n");
+
+      if (idx !== -1) {
+        const rawValue = res.substring(0, idx);
+        const scaleResponse = ScaleResponseParser(rawValue);
         return {
           ...state,
-          value: (state.buffer ?? "") + action.entry.value,
-          buffer: null,
+          value: rawValue,
+          buffer: res.substring(idx + 2),
+          scaleResponse,
         };
       } else {
         return {
           ...state,
-          buffer: (state.buffer ?? "") + action.entry.value,
+          buffer: res,
         };
       }
     }
