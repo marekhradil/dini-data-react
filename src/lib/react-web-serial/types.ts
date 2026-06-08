@@ -8,8 +8,8 @@ export interface SerialReducerState {
   isConnected: boolean;
   isUserCancelled: boolean;
   isSubscribing: boolean;
+  value: string | null;
   buffer: string | null;
-  value: number | null;
   error: Error | null;
 }
 
@@ -20,14 +20,14 @@ export interface SerialPortState {
   isConnected: boolean;
   isUserCancelled: boolean;
   isSubscribing: boolean;
+  value: string | null;
   buffer: string | null;
-  value: number | null;
   error: Error | null;
 }
 
 export interface SerialPortActions {
   disconnect: () => Promise<void>;
-  write: () => Promise<boolean>;
+  //write: () => Promise<boolean>;
 }
 
 export interface UseSerialPortParams {
@@ -36,7 +36,7 @@ export interface UseSerialPortParams {
 }
 
 export interface UseSerialPortReturn
-  extends SerialPortState, SerialPortActions {
+  extends SerialReducerState, SerialPortActions {
   connect: () => Promise<void>;
 }
 

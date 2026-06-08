@@ -23,7 +23,7 @@ export const useSerialPort = ({
     error,
     connect: contextConnect,
     disconnect,
-    write,
+    //write,
   } = context;
 
   const connect = () =>
@@ -46,6 +46,6 @@ export const useSerialPort = ({
     error,
     connect,
     disconnect,
-    write,
+    //write,
   };
 };

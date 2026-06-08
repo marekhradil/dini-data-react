@@ -23,8 +23,11 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
     null,
   );
+  const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(
+    null,
+  );
   const readLoopDoneRef = useRef<Promise<void> | null>(null);
-  const writeQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const writeLoopDoneRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -42,9 +45,31 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       // }
       state.port?.close().catch(() => {});
       readLoopDoneRef.current = null;
-      writeQueueRef.current = Promise.resolve(true);
+      writeLoopDoneRef.current = null;
+      //writeQueueRef.current = Promise.resolve(true);
     };
   }, [state.port]);
+
+  const writingLoop = async (
+    signal: AbortSignal,
+    writer: WritableStreamDefaultWriter<Uint8Array>,
+  ) => {
+    try {
+      while (!signal.aborted) {
+        await writer.write(textEncoder.encode("READ\r\n"));
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    } catch (err) {
+      if (!signal.aborted) {
+        const error =
+          err instanceof Error ? err : new Error("Failed to write data");
+        dispatch({ type: "WRITE_ERROR", error });
+      }
+    }
+    writer.releaseLock();
+    writerRef.current = null;
+    writeLoopDoneRef.current = null;
+  };
 
   const readingLoop = async (
     signal: AbortSignal,
@@ -89,7 +114,6 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       subscribeAbortControllerRef.current = null;
       readerRef.current = null;
       readLoopDoneRef.current = null;
-      dispatch({ type: "SUBSCRIBE_FINISH" });
     }
   };
 
@@ -108,8 +132,8 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         return;
       }
 
-      const abortController = new AbortController();
-      connectingAbortControllerRef.current = abortController;
+      const connectAbortController = new AbortController();
+      connectingAbortControllerRef.current = connectAbortController;
       dispatch({ type: "CONNECT_START" });
 
       try {
@@ -117,7 +141,7 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
           await navigator.serial.requestPort(requestOptions);
         await requestedPort.open(options);
 
-        if (abortController.signal.aborted) {
+        if (connectAbortController.signal.aborted) {
           try {
             await requestedPort.close();
           } catch {
@@ -129,10 +153,14 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         dispatch({ type: "CONNECT_SUCCESS", port: requestedPort });
         connectingAbortControllerRef.current = null;
 
-        if (!requestedPort || !requestedPort.readable) {
+        if (
+          !requestedPort ||
+          !requestedPort.readable ||
+          !requestedPort.writable
+        ) {
           dispatch({
             type: "SUBSCRIBE_ERROR",
-            error: new Error("Port is not connected or not readable"),
+            error: new Error("Port is not connected or not readable/writable"),
           });
 
           return;
@@ -143,8 +171,10 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         const signal = subscribeAbortController.signal;
 
         let reader: ReadableStreamDefaultReader<Uint8Array>;
+        let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
         try {
           reader = requestedPort.readable.getReader();
+          writer = requestedPort.writable?.getWriter() || null;
         } catch (err) {
           subscribeAbortControllerRef.current = null;
           const error =
@@ -154,11 +184,15 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         }
 
         readerRef.current = reader;
+        writerRef.current = writer;
         dispatch({ type: "SUBSCRIBE_START" });
 
         readLoopDoneRef.current = (async () => readingLoop(signal, reader))();
+        if (writer)
+          writeLoopDoneRef.current = (async () =>
+            writingLoop(signal, writer))();
       } catch (err) {
-        if (abortController.signal.aborted) return;
+        if (connectAbortController.signal.aborted) return;
 
         const isUserCancelled =
           err instanceof DOMException && err.name === "NotFoundError";
@@ -173,6 +207,7 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       } finally {
         connectingAbortControllerRef.current = null;
       }
+      dispatch({ type: "SUBSCRIBE_FINISH" });
     },
     [state.port],
   );
@@ -195,11 +230,21 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
         try {
           await readerRef.current.cancel();
         } catch {
-          // ignore cancel errors
+          console.warn("Failed to cancel reader during disconnect");
+        }
+      }
+      if (writerRef.current) {
+        try {
+          await writerRef.current.close();
+        } catch {
+          console.warn("Failed to close writer during disconnect");
         }
       }
       if (readLoopDoneRef.current) {
         await readLoopDoneRef.current;
+      }
+      if (writeLoopDoneRef.current) {
+        await writeLoopDoneRef.current;
       }
 
       await state.port.close();
@@ -212,48 +257,49 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       subscribeAbortControllerRef.current = null;
       readerRef.current = null;
       readLoopDoneRef.current = null;
-      writeQueueRef.current = Promise.resolve(true);
+      writerRef.current = null;
+      writeLoopDoneRef.current = null;
     }
   }, [state.port]);
 
-  const write = useCallback((): Promise<boolean> => {
-    if (!state.port || !state.port.writable) {
-      dispatch({
-        type: "WRITE_ERROR",
-        error: new Error("Port is not writable"),
-      });
-      return Promise.resolve(false);
-    }
+  // const write = useCallback((): Promise<boolean> => {
+  //   if (!state.port || !state.port.writable) {
+  //     dispatch({
+  //       type: "WRITE_ERROR",
+  //       error: new Error("Port is not writable"),
+  //     });
+  //     return Promise.resolve(false);
+  //   }
 
-    const result = writeQueueRef.current.then(async () => {
-      if (!state.port || !state.port.writable) {
-        dispatch({
-          type: "WRITE_ERROR",
-          error: new Error("Port is not writable"),
-        });
-        return false;
-      }
+  //   const result = writeQueueRef.current.then(async () => {
+  //     if (!state.port || !state.port.writable) {
+  //       dispatch({
+  //         type: "WRITE_ERROR",
+  //         error: new Error("Port is not writable"),
+  //       });
+  //       return false;
+  //     }
 
-      const writer = state.port.writable.getWriter();
-      try {
-        await writer.write(textEncoder.encode("READ\r\n"));
-        return true;
-      } catch (err) {
-        const error =
-          err instanceof Error ? err : new Error("Failed to write data");
-        dispatch({ type: "WRITE_ERROR", error });
-        return false;
-      } finally {
-        writer.releaseLock();
-      }
-    });
+  //     const writer = state.port.writable.getWriter();
+  //     try {
+  //       await writer.write(textEncoder.encode("READ\r\n"));
+  //       return true;
+  //     } catch (err) {
+  //       const error =
+  //         err instanceof Error ? err : new Error("Failed to write data");
+  //       dispatch({ type: "WRITE_ERROR", error });
+  //       return false;
+  //     } finally {
+  //       writer.releaseLock();
+  //     }
+  //   });
 
-    writeQueueRef.current = result.then(
-      () => true,
-      () => true,
-    );
-    return result;
-  }, [state.port]);
+  //   writeQueueRef.current = result.then(
+  //     () => true,
+  //     () => true,
+  //   );
+  //   return result;
+  // }, [state.port]);
 
   const contextValue = useMemo(
     () => ({
@@ -263,12 +309,12 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       isConnected: state.isConnected,
       isUserCancelled: state.isUserCancelled,
       isSubscribing: state.isSubscribing,
-      buffer: state.buffer,
       value: state.value,
+      buffer: state.buffer,
       error: state.error,
       connect,
       disconnect,
-      write,
+      // write,
     }),
     [
       isAvailableSerialApi,
@@ -278,11 +324,11 @@ export const SerialProvider = ({ children }: SerialProviderProps) => {
       state.isUserCancelled,
       state.error,
       state.isSubscribing,
-      state.buffer,
       state.value,
+      state.buffer,
       connect,
       disconnect,
-      write,
+      // write,
     ],
   );
 

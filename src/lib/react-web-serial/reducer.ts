@@ -23,8 +23,8 @@ export const initialState: SerialReducerState = {
   isConnected: false,
   isUserCancelled: false,
   isSubscribing: false,
-  buffer: null,
   value: null,
+  buffer: null,
   error: null,
 };
 
@@ -55,6 +55,8 @@ export const serialReducer = (
         isConnecting: false,
         isUserCancelled: true,
         error: null,
+        buffer: null,
+        value: null,
       };
     case "CONNECT_ERROR":
       return { ...state, isConnecting: false, error: action.error };
@@ -67,6 +69,8 @@ export const serialReducer = (
         isUserCancelled: false,
         isSubscribing: false,
         error: null,
+        buffer: null,
+        value: null,
       };
     case "DISCONNECT_SUCCESS":
       return {
@@ -75,6 +79,8 @@ export const serialReducer = (
         isConnected: false,
         isSubscribing: false,
         error: null,
+        buffer: null,
+        value: null,
       };
     case "DISCONNECT_ERROR":
       return {
@@ -83,23 +89,36 @@ export const serialReducer = (
         isConnected: false,
         isSubscribing: false,
         error: action.error,
+        buffer: null,
+        value: null,
       };
     case "WRITE_ERROR":
       return { ...state, error: action.error };
     case "SUBSCRIBE_START":
       return { ...state, isSubscribing: true, error: null };
     case "SUBSCRIBE_FINISH":
-      return { ...state, isSubscribing: false };
+      return {
+        ...state,
+        isSubscribing: false,
+        value: null,
+        buffer: null,
+        error: null,
+      };
     case "SUBSCRIBE_ERROR":
       return { ...state, isSubscribing: false, error: action.error };
     case "RECEIVE_DATA": {
-      const newBuffer = state.buffer?.endsWith("\r\n")
-        ? action.entry.value
-        : (state.buffer ?? "") + action.entry.value;
-      return {
-        ...state,
-        buffer: newBuffer,
-      };
+      if (action.entry.value.endsWith("\r\n")) {
+        return {
+          ...state,
+          value: (state.buffer ?? "") + action.entry.value,
+          buffer: null,
+        };
+      } else {
+        return {
+          ...state,
+          buffer: (state.buffer ?? "") + action.entry.value,
+        };
+      }
     }
 
     default: {

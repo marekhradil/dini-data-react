@@ -8,8 +8,8 @@ export function SerialMonitor() {
     error,
     connect,
     disconnect,
-    write,
-    buffer,
+    //write,
+    value,
   } = useSerialPort({
     options: { baudRate: 9600 },
   });
@@ -48,9 +48,9 @@ export function SerialMonitor() {
           onKeyDown={(e) => e.key === "Enter" && write()}
           disabled={!isConnected}
         /> */}
-        <button onClick={() => write()} disabled={!isConnected}>
+        {/* <button onClick={() => write()} disabled={!isConnected}>
           Odeslat
-        </button>
+        </button> */}
       </div>
 
       <div className="row">
@@ -58,7 +58,7 @@ export function SerialMonitor() {
         <input
           type="text"
           readOnly
-          value={buffer ?? "-"}
+          value={value ?? "-"}
           placeholder="(žádná data)"
           className="read-only"
         />
