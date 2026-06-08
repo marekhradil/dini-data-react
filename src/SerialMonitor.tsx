@@ -1,4 +1,5 @@
-import { useSerialPort } from "./lib/react-web-serial";
+import { useSerialPort } from './lib/react-web-serial'
+import ScaleDisplay from './comps/ScaleDisplay/ScaleDisplay'
 
 export function SerialMonitor() {
   const {
@@ -12,81 +13,54 @@ export function SerialMonitor() {
     scaleResponse,
   } = useSerialPort({
     options: { baudRate: 9600 },
-  });
+  })
 
   if (!isAvailableSerialApi) {
     return (
-      <p className="error">
-        Web Serial API není v tomto prohlížeči podporováno. Použijte Chrome nebo
-        Edge.
-      </p>
-    );
+      <div className='mx-auto mt-16 max-w-2xl px-4'>
+        <p className='rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700'>
+          Web Serial API není v tomto prohlížeči podporováno. Použijte Chrome nebo Edge.
+        </p>
+      </div>
+    )
   }
 
   return (
-    <div className="monitor">
-      <h1>Dini Data – Serial Monitor</h1>
+    <div className='mx-auto mt-12 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10 md:mt-16 md:p-8'>
+      <h1 className='mb-6 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl'>
+        Dini Data - Serial Monitor
+      </h1>
 
-      <div className="row">
+      <div className='mb-4 flex flex-wrap items-center gap-2'>
         <button
           onClick={() => connect()}
           disabled={isConnected || isConnecting}
+          className='rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40'
         >
-          {isConnecting ? "Připojování…" : "Připojit"}
+          {isConnecting ? 'Pripojovani...' : 'Pripojit'}
         </button>
-        <button onClick={() => disconnect()} disabled={!isConnected}>
+        <button
+          onClick={() => disconnect()}
+          disabled={!isConnected}
+          className='rounded-md bg-slate-200 px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-40'
+        >
           Odpojit
         </button>
       </div>
 
-      <div className="row">
+      <div className='mb-4'>
         <input
-          type="text"
+          type='text'
           readOnly
-          value={value ?? "-"}
-          placeholder="(žádná data)"
-          className="read-only"
+          value={value ?? '-'}
+          placeholder='(zadna data)'
+          className='w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900'
         />
       </div>
 
-      {isConnected && <p className="status">● Čtení aktivní</p>}
-      {error && <p className="error">Chyba: {error.message}</p>}
-      <div className="row">
-        <label>Status:</label>
-        <input
-          type="text"
-          readOnly
-          value={scaleResponse ? scaleResponse.status : "-"}
-          className="read-only"
-        />
-      </div>
-      <div className="row">
-        <label>Tare:</label>
-        <input
-          type="text"
-          readOnly
-          value={scaleResponse ? scaleResponse.tare : "-"}
-          className="read-only"
-        />
-      </div>
-      <div className="row">
-        <label>Weight:</label>
-        <input
-          type="text"
-          readOnly
-          value={scaleResponse ? scaleResponse.weight : "-"}
-          className="read-only"
-        />
-      </div>
-      <div className="row">
-        <label>Unit:</label>
-        <input
-          type="text"
-          readOnly
-          value={scaleResponse ? scaleResponse.unit : "-"}
-          className="read-only"
-        />
-      </div>
+      {error && <p className='mb-3 text-sm text-red-600'>Chyba: {error.message}</p>}
+
+      <ScaleDisplay isConnected={isConnected} scaleResponse={scaleResponse} />
     </div>
-  );
+  )
 }

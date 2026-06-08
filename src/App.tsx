@@ -1,4 +1,3 @@
-import "./App.css";
 import { SerialProvider } from "./lib/react-web-serial";
 import { SerialMonitor } from "./SerialMonitor";
 
